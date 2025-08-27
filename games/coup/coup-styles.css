@@ -428,8 +428,80 @@ body {
 
 .game-info {
     display: flex;
-    gap: 2rem;
+    justify-content: space-between;
     align-items: center;
+    width: 100%;
+}
+
+.current-turn-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+#currentTurn {
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #daa520, #b8860b);
+    border-radius: 10px;
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+        transform: scale(1.02);
+    }
+}
+
+.header-right {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.quick-reaction-btns {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.quick-btn {
+    padding: 0.3rem 0.8rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quick-btn.challenge-btn {
+    background: linear-gradient(135deg, #ff6b6b, #dc3545);
+    color: #fff;
+}
+
+.quick-btn.challenge-btn:hover {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    transform: translateY(-1px);
+}
+
+.quick-btn.pass-btn {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    color: #fff;
+}
+
+.quick-btn.pass-btn:hover {
+    background: linear-gradient(135deg, #1e7e34, #155724);
+    transform: translateY(-1px);
 }
 
 .help-btn {

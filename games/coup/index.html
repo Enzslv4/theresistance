@@ -108,6 +108,7 @@
                                     <option value="easy">Fácil</option>
                                     <option value="medium" selected>Médio</option>
                                     <option value="hard">Difícil</option>
+                                    <option value="turbo">Turbo (Ultra Rápido)</option>
                                 </select>
                                 <button id="addBotBtn" class="bot-btn">🤖 Adicionar Bot</button>
                             </div>
@@ -146,9 +147,17 @@
             <div class="game-header">
                 <h2>Coup Online</h2>
                 <div class="game-info">
-                    <span id="currentTurn">Turno de: Aguardando...</span>
-                    <span id="treasury">Tesouro: 50 moedas</span>
-                    <button id="showTutorial" class="help-btn">❓</button>
+                    <div class="current-turn-container">
+                        <span id="currentTurn">Turno de: Aguardando...</span>
+                        <div id="quickReactionBtns" class="quick-reaction-btns hidden">
+                            <button id="quickChallengeBtn" class="quick-btn challenge-btn">🛡️ Contestar</button>
+                            <button id="quickPassBtn" class="quick-btn pass-btn">✅ Permitir</button>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <span id="treasury">Tesouro: 50 moedas</span>
+                        <button id="showTutorial" class="help-btn">❓</button>
+                    </div>
                 </div>
             </div>
             

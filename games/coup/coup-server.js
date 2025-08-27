@@ -167,14 +167,26 @@ class CoupServer {
         ];
         
         const usedNames = room.players.map(p => p.name);
-        const availableNames = botNames.filter(name => !usedNames.includes(name));
-        const botName = availableNames.length > 0 
-            ? availableNames[Math.floor(Math.random() * availableNames.length)]
-            : `Bot ${room.players.length + 1}`;
+        
+        // Generate potential bot names with difficulty suffix
+        const potentialNames = botNames.map(name => `${name} [${difficulty.toUpperCase()}]`);
+        const availableNames = potentialNames.filter(name => !usedNames.includes(name));
+        
+        let botName;
+        if (availableNames.length > 0) {
+            botName = availableNames[Math.floor(Math.random() * availableNames.length)];
+        } else {
+            // Fallback: create unique name with counter
+            let counter = 1;
+            do {
+                botName = `Bot ${counter} [${difficulty.toUpperCase()}]`;
+                counter++;
+            } while (usedNames.includes(botName));
+        }
 
         const botPlayer = {
             id: botId,
-            name: `${botName} [${difficulty.toUpperCase()}]`,
+            name: botName,
             isHost: false,
             isBot: true,
             coins: 2,
@@ -428,9 +440,18 @@ class CoupServer {
                 if (otherPlayer.isBot) {
                     // Handle bot reactions
                     room.gameState.pendingReactions.push(otherPlayer.id);
+                    const botAI = this.bots.get(otherPlayer.id);
+                    let delay = botAI ? botAI.getReactionDelay() : 1000;
+                    
+                    // Speed up if all remaining players are bots
+                    const allBots = room.players.every(p => p.isBot || !this.hasInfluences(p));
+                    if (allBots) {
+                        delay = Math.min(delay, 300);
+                    }
+                    
                     setTimeout(() => {
                         this.processBotReaction(room, otherPlayer, reactionData, player, data.action);
-                    }, Math.random() * 3000 + 1000); // 1-4 seconds delay
+                    }, delay);
                 } else {
                     // Handle human player reactions
                     const otherSocket = this.io.sockets.sockets.get(otherPlayer.id);
@@ -558,7 +579,7 @@ class CoupServer {
             // Execute the action
             setTimeout(() => {
                 this.executeAction(room, room.gameState.currentAction);
-            }, 2000);
+            }, 1000);
             
         } else {
             // Challenge successful - action player loses influence
@@ -575,7 +596,7 @@ class CoupServer {
             room.gameState.currentAction = null;
             setTimeout(() => {
                 this.nextTurn(room);
-            }, 2000);
+            }, 1000);
         }
 
         // Clear pending reactions
@@ -758,11 +779,11 @@ class CoupServer {
             return;
         }
 
-        // Move to next turn (with delay for exchange)
+        // Move to next turn (with shorter delays)
         setTimeout(() => {
             room.gameState.currentAction = null;
             this.nextTurn(room);
-        }, action.action === 'exchange' ? 5000 : 1000);
+        }, action.action === 'exchange' ? 2000 : 500);
     }
 
     handleExchange(room, player) {
@@ -784,7 +805,7 @@ class CoupServer {
                     availableCards: availableCards,
                     required: player.influences.filter(card => card !== 'revealed').length
                 });
-            }, 2000);
+            }, 1000);
         } else {
             // Send card selection to human player
             const socket = this.io.sockets.sockets.get(player.id);
@@ -870,7 +891,7 @@ class CoupServer {
                     type: 'loseInfluence',
                     player: player.id
                 });
-            }, 1000);
+            }, 500);
         } else {
             const socket = this.io.sockets.sockets.get(player.id);
             if (socket) {
@@ -960,9 +981,13 @@ class CoupServer {
 
         // If current player is a bot, make it play automatically
         if (currentPlayer.isBot) {
+            // Check if all players are bots for turbo mode
+            const allBots = room.players.every(p => p.isBot || !this.hasInfluences(p));
+            const delay = allBots ? 200 : 800;
+            
             setTimeout(() => {
                 this.processBotTurn(room, currentPlayer);
-            }, 1500); // Small delay to make it feel more natural
+            }, delay);
         }
     }
 

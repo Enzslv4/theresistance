@@ -34,6 +34,7 @@ class CoupGame {
         
         this.reactionTimer = null;
         this.reactionTimeLeft = 15;
+        this.previousScreen = 'mainMenu'; // Track previous screen for tutorial navigation
         
         this.initializeEventListeners();
         this.initializeSocketListeners();
@@ -47,7 +48,7 @@ class CoupGame {
         document.getElementById('tutorialBtn').addEventListener('click', () => this.showScreen('tutorialScreen'));
         document.getElementById('backToMenu').addEventListener('click', () => this.showScreen('mainMenu'));
         document.getElementById('backToMenuFromJoin').addEventListener('click', () => this.showScreen('mainMenu'));
-        document.getElementById('closeTutorial').addEventListener('click', () => this.showScreen('mainMenu'));
+        document.getElementById('closeTutorial').addEventListener('click', () => this.closeTutorial());
         
         // Room Creation
         document.getElementById('createRoomConfirm').addEventListener('click', () => this.createRoom());
@@ -74,6 +75,10 @@ class CoupGame {
         // Reactions
         document.getElementById('challengeBtn').addEventListener('click', () => this.challengeAction());
         document.getElementById('passBtn').addEventListener('click', () => this.passReaction());
+        
+        // Quick reaction buttons (in header)
+        document.getElementById('quickChallengeBtn').addEventListener('click', () => this.challengeAction());
+        document.getElementById('quickPassBtn').addEventListener('click', () => this.passReaction());
         
         // Block buttons
         document.getElementById('blockDukeBtn').addEventListener('click', () => this.blockAction('duke'));
@@ -198,6 +203,12 @@ class CoupGame {
 
         this.socket.on('actionTaken', (data) => {
             this.addGameLog(data.message, data.type || 'action');
+            
+            // Announce other players' actions in chat (not our own, we already announced it)
+            if (data.playerId && data.playerId !== this.gameState.myPlayerId) {
+                this.announceOtherPlayerActionInChat(data);
+            }
+            
             this.updateGameUI();
         });
 
@@ -393,6 +404,9 @@ class CoupGame {
             return;
         }
 
+        // Announce action in chat
+        this.announceActionInChat(action, target);
+        
         this.socket.emit('coup:takeAction', {
             roomCode: this.gameState.roomCode,
             action: action,
@@ -427,6 +441,7 @@ class CoupGame {
         const reactionTitle = document.getElementById('reactionTitle');
         const challengeSection = document.getElementById('challengeSection');
         const blockSection = document.getElementById('blockSection');
+        const quickReactionBtns = document.getElementById('quickReactionBtns');
         
         reactionTitle.textContent = data.title || 'Reação Necessária';
         reactionArea.classList.remove('hidden');
@@ -444,6 +459,13 @@ class CoupGame {
             this.updateBlockOptions(data.blockOptions);
         } else {
             blockSection.classList.add('hidden');
+        }
+
+        // Show quick reaction buttons (only for challenge/pass, not for blocking)
+        if (data.canChallenge && !data.canBlock) {
+            quickReactionBtns.classList.remove('hidden');
+        } else {
+            quickReactionBtns.classList.add('hidden');
         }
 
         // Start reaction timer
@@ -464,6 +486,7 @@ class CoupGame {
 
     hideReactionArea() {
         document.getElementById('reactionArea').classList.add('hidden');
+        document.getElementById('quickReactionBtns').classList.add('hidden');
         this.clearReactionTimer();
     }
 
@@ -841,6 +864,53 @@ class CoupGame {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    announceActionInChat(action, target) {
+        const actionNames = {
+            'income': 'Renda (+1 moeda)',
+            'foreign-aid': 'Ajuda Externa (+2 moedas)',
+            'coup': 'Golpe',
+            'tax': 'Taxar (+3 moedas) - Duque',
+            'assassinate': 'Assassinar - Assassino',
+            'steal': 'Extorquir (2 moedas) - Capitão',
+            'exchange': 'Trocar cartas - Embaixador'
+        };
+
+        let message = `🎯 ${this.gameState.myPlayerName} quer usar: ${actionNames[action] || action}`;
+        
+        if (target) {
+            const targetPlayer = this.gameState.players.find(p => p.id === target);
+            if (targetPlayer) {
+                message += ` → Alvo: ${targetPlayer.name}`;
+            }
+        }
+
+        // Add contestation info for character actions
+        if (['tax', 'assassinate', 'steal', 'exchange'].includes(action)) {
+            message += ' | 30s para contestar! ⏰';
+        }
+
+        this.addGameChatMessage('Sistema', message);
+    }
+
+    announceOtherPlayerActionInChat(data) {
+        // Extract action info from the server data
+        if (data.message && data.playerId) {
+            const player = this.gameState.players.find(p => p.id === data.playerId);
+            const playerName = player ? player.name : 'Jogador';
+            
+            // Create a simplified version of the server message for chat
+            let chatMessage = `🎯 ${playerName}: ${data.message}`;
+            
+            // Add contestation timer info if it's a character action
+            if (data.message.includes('Duque') || data.message.includes('Assassino') || 
+                data.message.includes('Capitão') || data.message.includes('Embaixador')) {
+                chatMessage += ' | ⏰ 30s para contestar!';
+            }
+            
+            this.addGameChatMessage('Sistema', chatMessage);
+        }
+    }
+
     sendChatMessage() {
         const input = document.getElementById('chatInput');
         const message = input.value.trim();
@@ -922,7 +992,26 @@ class CoupGame {
     }
 
     showTutorial() {
+        // Store current screen before showing tutorial
+        this.previousScreen = this.getCurrentScreen();
         this.showScreen('tutorialScreen');
+    }
+
+    closeTutorial() {
+        // Return to the previous screen
+        this.showScreen(this.previousScreen);
+    }
+
+    getCurrentScreen() {
+        // Determine which screen is currently visible
+        const screens = ['mainMenu', 'roomCreation', 'joinRoom', 'lobby', 'gameScreen', 'victoryScreen', 'tutorialScreen'];
+        for (const screen of screens) {
+            const element = document.getElementById(screen);
+            if (element && !element.classList.contains('hidden')) {
+                return screen;
+            }
+        }
+        return 'mainMenu'; // Default fallback
     }
 
     resetGameState() {
