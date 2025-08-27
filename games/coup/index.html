@@ -101,6 +101,17 @@
                     <h3>Jogadores na Sala:</h3>
                     <div id="playersList" class="players-list"></div>
                     <div id="hostControls" class="host-controls hidden">
+                        <div class="bot-controls">
+                            <h4>Bots (IA):</h4>
+                            <div class="bot-buttons">
+                                <select id="botDifficulty" class="bot-difficulty-select">
+                                    <option value="easy">Fácil</option>
+                                    <option value="medium" selected>Médio</option>
+                                    <option value="hard">Difícil</option>
+                                </select>
+                                <button id="addBotBtn" class="bot-btn">🤖 Adicionar Bot</button>
+                            </div>
+                        </div>
                         <div class="host-buttons">
                             <button id="startGameBtn" class="primary-btn" disabled>Iniciar Jogo</button>
                         </div>

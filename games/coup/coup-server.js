@@ -1,9 +1,12 @@
 // Coup Online - Server-side Game Logic
+const CoupAI = require('./coup-ai');
+
 class CoupServer {
     constructor(io) {
         this.io = io;
         this.rooms = new Map();
         this.characters = ['duke', 'assassin', 'captain', 'ambassador', 'contess'];
+        this.bots = new Map(); // Store bot instances
         this.setupSocketEvents();
     }
 
@@ -15,6 +18,8 @@ class CoupServer {
             socket.on('joinRoom', (data) => this.joinRoom(socket, data));
             socket.on('leaveRoom', () => this.leaveRoom(socket));
             socket.on('startGame', (data) => this.startGame(socket, data));
+            socket.on('addBot', (data) => this.addBot(socket, data));
+            socket.on('removeBot', (data) => this.removeBot(socket, data));
             socket.on('chatMessage', (data) => this.handleChatMessage(socket, data));
             socket.on('gameChatMessage', (data) => this.handleGameChatMessage(socket, data));
             socket.on('takeAction', (data) => this.handleAction(socket, data));
@@ -126,6 +131,120 @@ class CoupServer {
         });
 
         console.log(`👤 Coup: ${data.playerName} joined room ${data.roomCode}`);
+    }
+
+    addBot(socket, data) {
+        const room = this.rooms.get(data.roomCode);
+        
+        if (!room) {
+            socket.emit('error', 'Sala não encontrada');
+            return;
+        }
+
+        if (room.host !== socket.id) {
+            socket.emit('error', 'Apenas o host pode adicionar bots');
+            return;
+        }
+
+        if (room.players.length >= room.gameSettings.maxPlayers) {
+            socket.emit('error', 'Sala está cheia');
+            return;
+        }
+
+        if (room.gameState.phase !== 'lobby') {
+            socket.emit('error', 'Não é possível adicionar bots durante o jogo');
+            return;
+        }
+
+        const difficulty = data.difficulty || 'medium';
+        const botId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const botAI = new CoupAI(difficulty);
+        
+        const botNames = [
+            'Magnus Bot', 'Alice AI', 'Charlie CPU', 'Diana Droid',
+            'Eddie Engine', 'Fiona Fighter', 'Gary Ghost', 'Helen Hacker',
+            'Ivan Intel', 'Julia Judge', 'Kevin Knight', 'Luna Logic'
+        ];
+        
+        const usedNames = room.players.map(p => p.name);
+        const availableNames = botNames.filter(name => !usedNames.includes(name));
+        const botName = availableNames.length > 0 
+            ? availableNames[Math.floor(Math.random() * availableNames.length)]
+            : `Bot ${room.players.length + 1}`;
+
+        const botPlayer = {
+            id: botId,
+            name: `${botName} [${difficulty.toUpperCase()}]`,
+            isHost: false,
+            isBot: true,
+            coins: 2,
+            influences: [],
+            revealedInfluences: 0,
+            connected: true,
+            difficulty: difficulty
+        };
+
+        room.players.push(botPlayer);
+        this.bots.set(botId, botAI);
+
+        // Notify all players about the new bot
+        this.io.to(data.roomCode).emit('playerJoined', {
+            player: botPlayer,
+            players: room.players
+        });
+
+        this.io.to(data.roomCode).emit('chatMessage', {
+            sender: 'Sistema',
+            message: `Bot ${botName} (${difficulty}) foi adicionado à sala`,
+            timestamp: Date.now(),
+            isSystem: true
+        });
+
+        console.log(`🤖 Coup: Bot ${botName} (${difficulty}) added to room ${data.roomCode}`);
+    }
+
+    removeBot(socket, data) {
+        const room = this.rooms.get(data.roomCode);
+        
+        if (!room) {
+            socket.emit('error', 'Sala não encontrada');
+            return;
+        }
+
+        if (room.host !== socket.id) {
+            socket.emit('error', 'Apenas o host pode remover bots');
+            return;
+        }
+
+        if (room.gameState.phase !== 'lobby') {
+            socket.emit('error', 'Não é possível remover bots durante o jogo');
+            return;
+        }
+
+        const botIndex = room.players.findIndex(p => p.id === data.botId && p.isBot);
+        
+        if (botIndex === -1) {
+            socket.emit('error', 'Bot não encontrado');
+            return;
+        }
+
+        const bot = room.players[botIndex];
+        room.players.splice(botIndex, 1);
+        this.bots.delete(data.botId);
+
+        // Notify all players about bot removal
+        this.io.to(data.roomCode).emit('playerLeft', {
+            players: room.players
+        });
+
+        this.io.to(data.roomCode).emit('chatMessage', {
+            sender: 'Sistema',
+            message: `Bot ${bot.name} foi removido da sala`,
+            timestamp: Date.now(),
+            isSystem: true
+        });
+
+        console.log(`🤖 Coup: Bot ${bot.name} removed from room ${data.roomCode}`);
     }
 
     startGame(socket, data) {
@@ -256,21 +375,22 @@ class CoupServer {
         });
     }
 
-    handleAction(socket, data) {
+    handleAction(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room || room.gameState.phase !== 'game') {
-            socket.emit('error', 'Jogo não encontrado ou não iniciado');
+            if (socket) socket.emit('error', 'Jogo não encontrado ou não iniciado');
             return;
         }
 
-        const player = room.players.find(p => p.id === socket.id);
+        const playerId = botId || (socket ? socket.id : null);
+        const player = room.players.find(p => p.id === playerId);
         if (!player) {
-            socket.emit('error', 'Jogador não encontrado');
+            if (socket) socket.emit('error', 'Jogador não encontrado');
             return;
         }
 
-        if (room.gameState.currentPlayer !== socket.id) {
-            socket.emit('error', 'Não é seu turno');
+        if (room.gameState.currentPlayer !== playerId) {
+            if (socket) socket.emit('error', 'Não é seu turno');
             return;
         }
 
@@ -295,20 +415,29 @@ class CoupServer {
         if (canChallenge || canBlock) {
             // Set up reaction phase
             room.gameState.pendingReactions = [];
-            const otherPlayers = room.players.filter(p => p.id !== socket.id && this.hasInfluences(p));
+            const otherPlayers = room.players.filter(p => p.id !== playerId && this.hasInfluences(p));
             
             otherPlayers.forEach(otherPlayer => {
-                const otherSocket = this.io.sockets.sockets.get(otherPlayer.id);
-                if (otherSocket) {
-                    const reactionData = {
-                        title: `${player.name} quer usar ${this.getActionName(data.action)}`,
-                        canChallenge: canChallenge,
-                        canBlock: canBlock && this.canPlayerBlock(otherPlayer, data.action, data.target),
-                        blockOptions: canBlock ? blockOptions : []
-                    };
-                    
-                    otherSocket.emit('reactionRequired', reactionData);
+                const reactionData = {
+                    title: `${player.name} quer usar ${this.getActionName(data.action)}`,
+                    canChallenge: canChallenge,
+                    canBlock: canBlock && this.canPlayerBlock(otherPlayer, data.action, data.target),
+                    blockOptions: canBlock ? blockOptions : []
+                };
+
+                if (otherPlayer.isBot) {
+                    // Handle bot reactions
                     room.gameState.pendingReactions.push(otherPlayer.id);
+                    setTimeout(() => {
+                        this.processBotReaction(room, otherPlayer, reactionData, player, data.action);
+                    }, Math.random() * 3000 + 1000); // 1-4 seconds delay
+                } else {
+                    // Handle human player reactions
+                    const otherSocket = this.io.sockets.sockets.get(otherPlayer.id);
+                    if (otherSocket) {
+                        otherSocket.emit('reactionRequired', reactionData);
+                        room.gameState.pendingReactions.push(otherPlayer.id);
+                    }
                 }
             });
 
@@ -379,13 +508,14 @@ class CoupServer {
         return false;
     }
 
-    handleChallenge(socket, data) {
+    handleChallenge(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room || !room.gameState.currentAction) {
             return;
         }
 
-        const challenger = room.players.find(p => p.id === socket.id);
+        const challengerId = botId || (socket ? socket.id : null);
+        const challenger = room.players.find(p => p.id === challengerId);
         const actionPlayer = room.players.find(p => p.id === room.gameState.currentAction.player);
         
         if (!challenger || !actionPlayer) {
@@ -393,7 +523,7 @@ class CoupServer {
         }
 
         // Remove challenger from pending reactions
-        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== socket.id);
+        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== challengerId);
 
         // Resolve challenge
         this.resolveChallenge(room, challenger, actionPlayer, room.gameState.currentAction.action);
@@ -452,23 +582,24 @@ class CoupServer {
         room.gameState.pendingReactions = [];
     }
 
-    handleBlock(socket, data) {
+    handleBlock(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room || !room.gameState.currentAction) {
             return;
         }
 
-        const blocker = room.players.find(p => p.id === socket.id);
+        const blockerId = botId || (socket ? socket.id : null);
+        const blocker = room.players.find(p => p.id === blockerId);
         if (!blocker) {
             return;
         }
 
         // Remove blocker from pending reactions
-        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== socket.id);
+        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== blockerId);
 
         // Set up block challenge
         room.gameState.currentBlock = {
-            player: socket.id,
+            player: blockerId,
             character: data.character,
             originalAction: room.gameState.currentAction
         };
@@ -525,14 +656,16 @@ class CoupServer {
         }
     }
 
-    handlePass(socket, data) {
+    handlePass(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room) {
             return;
         }
 
+        const playerId = botId || (socket ? socket.id : null);
+
         // Remove player from pending reactions
-        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== socket.id);
+        room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== playerId);
 
         // If no more pending reactions, resolve
         if (room.gameState.pendingReactions.length === 0) {
@@ -642,14 +775,26 @@ class CoupServer {
         // Combine with current influences
         const availableCards = [...player.influences.filter(card => card !== 'revealed'), ...drawnCards];
         
-        // Send card selection to player
-        const socket = this.io.sockets.sockets.get(player.id);
-        if (socket) {
-            socket.emit('cardSelection', {
-                title: 'Escolha suas cartas (mantenha ' + player.influences.filter(card => card !== 'revealed').length + ')',
-                cards: availableCards,
-                required: player.influences.filter(card => card !== 'revealed').length
-            });
+        // Handle exchange for bots vs humans
+        if (player.isBot) {
+            // Handle bot exchange automatically
+            setTimeout(() => {
+                this.processBotCardSelection(room, player, {
+                    type: 'exchange',
+                    availableCards: availableCards,
+                    required: player.influences.filter(card => card !== 'revealed').length
+                });
+            }, 2000);
+        } else {
+            // Send card selection to human player
+            const socket = this.io.sockets.sockets.get(player.id);
+            if (socket) {
+                socket.emit('cardSelection', {
+                    title: 'Escolha suas cartas (mantenha ' + player.influences.filter(card => card !== 'revealed').length + ')',
+                    cards: availableCards,
+                    required: player.influences.filter(card => card !== 'revealed').length
+                });
+            }
         }
 
         // Store exchange data
@@ -660,18 +805,19 @@ class CoupServer {
         };
     }
 
-    handleCardSelection(socket, data) {
+    handleCardSelection(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room || !room.gameState.pendingExchange) {
             return;
         }
 
+        const playerId = botId || (socket ? socket.id : null);
         const exchange = room.gameState.pendingExchange;
-        if (exchange.player !== socket.id) {
+        if (exchange.player !== playerId) {
             return;
         }
 
-        const player = room.players.find(p => p.id === socket.id);
+        const player = room.players.find(p => p.id === playerId);
         if (!player) {
             return;
         }
@@ -717,13 +863,23 @@ class CoupServer {
             return;
         }
 
-        const socket = this.io.sockets.sockets.get(player.id);
-        if (socket) {
-            socket.emit('cardSelection', {
-                title: 'Escolha uma influência para revelar',
-                cards: player.influences.filter(card => card !== 'revealed'),
-                required: 1
-            });
+        if (player.isBot) {
+            // Handle bot influence loss automatically
+            setTimeout(() => {
+                this.processBotCardSelection(room, player, {
+                    type: 'loseInfluence',
+                    player: player.id
+                });
+            }, 1000);
+        } else {
+            const socket = this.io.sockets.sockets.get(player.id);
+            if (socket) {
+                socket.emit('cardSelection', {
+                    title: 'Escolha uma influência para revelar',
+                    cards: player.influences.filter(card => card !== 'revealed'),
+                    required: 1
+                });
+            }
         }
 
         // Store influence loss data
@@ -732,17 +888,18 @@ class CoupServer {
         };
     }
 
-    handleLoseInfluence(socket, data) {
+    handleLoseInfluence(socket, data, botId = null) {
         const room = this.rooms.get(data.roomCode);
         if (!room || !room.gameState.pendingInfluenceLoss) {
             return;
         }
 
-        if (room.gameState.pendingInfluenceLoss.player !== socket.id) {
+        const playerId = botId || (socket ? socket.id : null);
+        if (room.gameState.pendingInfluenceLoss.player !== playerId) {
             return;
         }
 
-        const player = room.players.find(p => p.id === socket.id);
+        const player = room.players.find(p => p.id === playerId);
         if (!player) {
             return;
         }
@@ -795,10 +952,148 @@ class CoupServer {
 
         this.updateGameState(room);
 
+        const currentPlayer = room.players[nextIndex];
         this.io.to(room.code).emit('actionTaken', {
-            message: `Turno de ${room.players[nextIndex].name}`,
+            message: `Turno de ${currentPlayer.name}`,
             type: 'system'
         });
+
+        // If current player is a bot, make it play automatically
+        if (currentPlayer.isBot) {
+            setTimeout(() => {
+                this.processBotTurn(room, currentPlayer);
+            }, 1500); // Small delay to make it feel more natural
+        }
+    }
+
+    processBotTurn(room, botPlayer) {
+        const botAI = this.bots.get(botPlayer.id);
+        if (!botAI) {
+            console.error(`Bot AI not found for ${botPlayer.id}`);
+            this.nextTurn(room);
+            return;
+        }
+
+        try {
+            const gameState = this.getBotGameState(room, botPlayer);
+            const decision = botAI.decideTurn(gameState, botPlayer);
+            
+            console.log(`🤖 Bot ${botPlayer.name} decided: ${decision.action}${decision.target ? ` -> ${this.getPlayerName(room, decision.target)}` : ''}`);
+
+            // Execute the bot's action
+            this.handleAction(null, {
+                roomCode: room.code,
+                action: decision.action,
+                target: decision.target
+            }, botPlayer.id);
+
+        } catch (error) {
+            console.error('Bot decision error:', error);
+            // Fallback to income if there's an error
+            this.handleAction(null, {
+                roomCode: room.code,
+                action: 'income'
+            }, botPlayer.id);
+        }
+    }
+
+    getBotGameState(room, botPlayer) {
+        // Create a sanitized game state for the bot AI
+        return {
+            players: room.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                coins: p.coins,
+                influences: p.influences.filter(card => card !== 'revealed').length,
+                revealedInfluences: p.revealedInfluences,
+                isBot: p.isBot || false
+            })),
+            revealedCards: [...room.gameState.revealedCards],
+            deckCount: room.gameState.deck.length,
+            currentPlayer: room.gameState.currentPlayer,
+            turnCount: room.gameState.turnCount
+        };
+    }
+
+    processBotReaction(room, botPlayer, reactionData, actionPlayer, action) {
+        const botAI = this.bots.get(botPlayer.id);
+        if (!botAI || !room.gameState.pendingReactions.includes(botPlayer.id)) {
+            return;
+        }
+
+        try {
+            const gameState = this.getBotGameState(room, botPlayer);
+            const decision = botAI.decideReaction(reactionData, botPlayer, gameState, actionPlayer, action);
+            
+            console.log(`🤖 Bot ${botPlayer.name} reaction: Challenge=${decision.challenge}, Block=${decision.block}`);
+
+            // Remove bot from pending reactions first
+            room.gameState.pendingReactions = room.gameState.pendingReactions.filter(id => id !== botPlayer.id);
+
+            if (decision.challenge) {
+                this.handleChallenge(null, { roomCode: room.code }, botPlayer.id);
+            } else if (decision.block) {
+                this.handleBlock(null, { 
+                    roomCode: room.code, 
+                    character: decision.blockCharacter 
+                }, botPlayer.id);
+            } else {
+                this.handlePass(null, { roomCode: room.code }, botPlayer.id);
+            }
+
+        } catch (error) {
+            console.error('Bot reaction error:', error);
+            // Default to pass on error
+            this.handlePass(null, { roomCode: room.code }, botPlayer.id);
+        }
+    }
+
+    processBotCardSelection(room, botPlayer, selectionData) {
+        const botAI = this.bots.get(botPlayer.id);
+        if (!botAI) {
+            return;
+        }
+
+        try {
+            const gameState = this.getBotGameState(room, botPlayer);
+            
+            if (selectionData.type === 'exchange') {
+                const selectedCards = botAI.selectCardsToKeep(
+                    selectionData.availableCards, 
+                    selectionData.required, 
+                    botPlayer, 
+                    gameState
+                );
+                
+                this.handleCardSelection(null, {
+                    roomCode: room.code,
+                    selectedCards: selectedCards
+                }, botPlayer.id);
+                
+            } else if (selectionData.type === 'loseInfluence') {
+                const cardIndex = botAI.selectInfluenceToLose(botPlayer, gameState);
+                
+                this.handleLoseInfluence(null, {
+                    roomCode: room.code,
+                    cardIndex: cardIndex
+                }, botPlayer.id);
+            }
+
+        } catch (error) {
+            console.error('Bot card selection error:', error);
+            // Fallback to random selection
+            if (selectionData.type === 'loseInfluence') {
+                const activeCards = botPlayer.influences
+                    .map((card, index) => ({ card, index }))
+                    .filter(c => c.card !== 'revealed');
+                const randomIndex = Math.floor(Math.random() * activeCards.length);
+                
+                this.handleLoseInfluence(null, {
+                    roomCode: room.code,
+                    cardIndex: activeCards[randomIndex].index
+                }, botPlayer.id);
+            }
+        }
     }
 
     checkWinCondition(room) {

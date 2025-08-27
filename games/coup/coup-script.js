@@ -56,6 +56,7 @@ class CoupGame {
         // Lobby
         document.getElementById('startGameBtn').addEventListener('click', () => this.startGame());
         document.getElementById('leaveLobby').addEventListener('click', () => this.leaveRoom());
+        document.getElementById('addBotBtn').addEventListener('click', () => this.addBot());
         document.getElementById('sendMessage').addEventListener('click', () => this.sendChatMessage());
         document.getElementById('chatInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.sendChatMessage();
@@ -287,9 +288,21 @@ class CoupGame {
             const playerItem = document.createElement('div');
             playerItem.className = 'player-item';
             
+            let badges = '';
+            if (player.isHost) {
+                badges += '<span class="host-badge">Host</span>';
+            }
+            if (player.isBot) {
+                badges += '<span class="bot-badge">Bot</span>';
+                // Add remove button for bots if user is host
+                if (this.gameState.isHost) {
+                    badges += `<button class="remove-bot-btn" onclick="coupGame.removeBot('${player.id}')">✕</button>`;
+                }
+            }
+            
             playerItem.innerHTML = `
                 <span class="player-name">${player.name}</span>
-                ${player.isHost ? '<span class="host-badge">Host</span>' : ''}
+                <div class="player-badges">${badges}</div>
             `;
             
             playersList.appendChild(playerItem);
@@ -332,6 +345,22 @@ class CoupGame {
         this.socket.emit('leaveRoom');
         this.showScreen('mainMenu');
         this.resetGameState();
+    }
+
+    addBot() {
+        const difficulty = document.getElementById('botDifficulty').value;
+        
+        this.socket.emit('addBot', {
+            roomCode: this.gameState.roomCode,
+            difficulty: difficulty
+        });
+    }
+
+    removeBot(botId) {
+        this.socket.emit('removeBot', {
+            roomCode: this.gameState.roomCode,
+            botId: botId
+        });
     }
 
     takeAction(action, target = null) {

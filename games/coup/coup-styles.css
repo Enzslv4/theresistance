@@ -233,6 +233,12 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.player-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .player-name {
     font-weight: bold;
 }
@@ -244,6 +250,89 @@ body {
     border-radius: 15px;
     font-size: 0.8rem;
     font-weight: bold;
+}
+
+.bot-badge {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: #fff;
+    padding: 0.2rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.bot-controls {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.bot-controls h4 {
+    margin-bottom: 0.5rem;
+    color: #17a2b8;
+}
+
+.bot-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.bot-difficulty-select {
+    padding: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.bot-difficulty-select:focus {
+    outline: none;
+    border-color: #17a2b8;
+    box-shadow: 0 0 5px rgba(23, 162, 184, 0.3);
+}
+
+.bot-btn {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bot-btn:hover {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    transform: translateY(-1px);
+}
+
+.bot-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.remove-bot-btn {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: #fff;
+    border: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 0.5rem;
+}
+
+.remove-bot-btn:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    transform: translateY(-1px);
 }
 
 .settings-display p {
