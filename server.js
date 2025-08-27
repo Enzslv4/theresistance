@@ -23,12 +23,18 @@ app.use(express.static(__dirname));
 
 // Rota principal - servir o arquivo index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    const indexPath = path.resolve(__dirname, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error('Erro ao servir index.html:', err);
+            res.status(500).send('Erro interno do servidor');
+        }
+    });
 });
 
 // Rota para o jogo original de batalha
 app.get('/battle', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.resolve(__dirname, 'index.html'));
 });
 
 // Socket.IO events
@@ -183,6 +189,9 @@ io.on('connection', (socket) => {
 // Iniciar servidor
 server.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📁 Diretório de trabalho: ${__dirname}`);
+    console.log(`📄 Arquivo index.html: ${path.resolve(__dirname, 'index.html')}`);
+    console.log(`✅ Arquivo existe: ${require('fs').existsSync(path.resolve(__dirname, 'index.html'))}`);
     console.log(`🎮 The Resistance Online disponível em http://localhost:${PORT}`);
 });
 
