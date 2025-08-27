@@ -20,6 +20,7 @@ const rooms = new Map();
 
 // Servir arquivos estáticos
 app.use(express.static(__dirname));
+app.use('/games', express.static(path.join(__dirname, 'games')));
 
 // Rota principal - servir o arquivo index.html
 app.get('/', (req, res) => {
@@ -192,7 +193,8 @@ server.listen(PORT, () => {
     console.log(`📁 Diretório de trabalho: ${__dirname}`);
     console.log(`📄 Arquivo index.html: ${path.resolve(__dirname, 'index.html')}`);
     console.log(`✅ Arquivo existe: ${require('fs').existsSync(path.resolve(__dirname, 'index.html'))}`);
-    console.log(`🎮 The Resistance Online disponível em http://localhost:${PORT}`);
+    console.log(`🎮 Hub de Jogos Online disponível em http://localhost:${PORT}`);
+    console.log(`🕵️ The Resistance disponível em http://localhost:${PORT}/games/the-resistance/`);
 });
 
 // Tratamento de erros
