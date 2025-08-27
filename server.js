@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const CoupServer = require('./games/coup/coup-server');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +38,9 @@ app.get('/', (req, res) => {
 app.get('/battle', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'index.html'));
 });
+
+// Initialize game servers
+const coupServer = new CoupServer(io);
 
 // Socket.IO events
 io.on('connection', (socket) => {
@@ -195,6 +199,7 @@ server.listen(PORT, () => {
     console.log(`✅ Arquivo existe: ${require('fs').existsSync(path.resolve(__dirname, 'index.html'))}`);
     console.log(`🎮 Hub de Jogos Online disponível em http://localhost:${PORT}`);
     console.log(`🕵️ The Resistance disponível em http://localhost:${PORT}/games/the-resistance/`);
+    console.log(`👑 Coup Online disponível em http://localhost:${PORT}/games/coup/`);
 });
 
 // Tratamento de erros

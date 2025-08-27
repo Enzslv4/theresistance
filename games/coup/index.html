@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coup Online</title>
+    <link rel="stylesheet" href="coup-styles.css">
+</head>
+<body>
+    <!-- Main Menu Screen -->
+    <div id="mainMenu" class="screen">
+        <div class="hero-section">
+            <h1 class="game-title">👑 Coup Online</h1>
+            <p class="game-description">
+                No mundo de Coup, você é um líder rebelde tentando derrubar o governo.
+                Use blefe, dedução e estratégia para eliminar seus oponentes e ser o último em pé!
+            </p>
+            <div class="menu-buttons">
+                <button id="createRoomBtn" class="primary-btn">🏠 Criar Sala</button>
+                <button id="joinRoomBtn" class="primary-btn">🚪 Entrar em Sala</button>
+                <button id="tutorialBtn" class="secondary-btn">📖 Tutorial</button>
+                <a href="../../index.html" class="secondary-btn" style="text-decoration: none; display: inline-block; text-align: center;">🏠 Voltar ao Hub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Creation Screen -->
+    <div id="roomCreation" class="screen hidden">
+        <div class="form-container">
+            <h2>🏠 Criar Nova Sala</h2>
+            <div class="form-group">
+                <label for="hostName">Seu Nome:</label>
+                <input type="text" id="hostName" maxlength="20" placeholder="Digite seu nome">
+            </div>
+            <div class="form-group">
+                <label for="roomName">Nome da Sala:</label>
+                <input type="text" id="roomName" maxlength="30" placeholder="Nome da sala">
+            </div>
+            <div class="form-group">
+                <label for="maxPlayers">Número de Jogadores:</label>
+                <select id="maxPlayers">
+                    <option value="2">2 Jogadores (Variante Especial)</option>
+                    <option value="3">3 Jogadores</option>
+                    <option value="4">4 Jogadores</option>
+                    <option value="5">5 Jogadores</option>
+                    <option value="6" selected>6 Jogadores (Recomendado)</option>
+                    <option value="7">7 Jogadores</option>
+                    <option value="8">8 Jogadores</option>
+                    <option value="9">9 Jogadores</option>
+                    <option value="10">10 Jogadores</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <h3>Variantes do Jogo:</h3>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="inquisitorMode"> Usar Inquisidor (em vez de Embaixador)</label>
+                    <label><input type="checkbox" id="twoPlayerMode"> Modo 2 Jogadores Especial</label>
+                    <label><input type="checkbox" id="declaredCoup"> Golpe Declarado (2 jogadores)</label>
+                    <label><input type="checkbox" id="differentArt"> Arte Diferente para Cartas</label>
+                </div>
+            </div>
+            <div class="form-buttons">
+                <button id="createRoomConfirm" class="primary-btn">Criar Sala</button>
+                <button id="backToMenu" class="secondary-btn">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Room Screen -->
+    <div id="joinRoom" class="screen hidden">
+        <div class="form-container">
+            <h2>🚪 Entrar em Sala</h2>
+            <div class="form-group">
+                <label for="playerName">Seu Nome:</label>
+                <input type="text" id="playerName" maxlength="20" placeholder="Digite seu nome">
+            </div>
+            <div class="form-group">
+                <label for="roomCode">Código da Sala:</label>
+                <input type="text" id="roomCode" maxlength="6" placeholder="Ex: ABC123" style="text-transform: uppercase;">
+            </div>
+            <div class="form-buttons">
+                <button id="joinRoomConfirm" class="primary-btn">Entrar</button>
+                <button id="backToMenuFromJoin" class="secondary-btn">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobby" class="screen hidden">
+        <div class="lobby-container">
+            <div class="lobby-header">
+                <h2 id="lobbyTitle">Sala: AGUARDANDO</h2>
+                <div class="room-info">
+                    <span id="roomCodeDisplay">Código: ------</span>
+                    <span id="playerCount">0/6 jogadores</span>
+                </div>
+            </div>
+            
+            <div class="lobby-content">
+                <div class="players-section">
+                    <h3>Jogadores na Sala:</h3>
+                    <div id="playersList" class="players-list"></div>
+                    <div id="hostControls" class="host-controls hidden">
+                        <div class="host-buttons">
+                            <button id="startGameBtn" class="primary-btn" disabled>Iniciar Jogo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="game-settings">
+                    <h3>Configurações do Jogo:</h3>
+                    <div id="gameSettings" class="settings-display">
+                        <p>Máximo de jogadores: <span id="maxPlayersDisplay">6</span></p>
+                        <div id="variantsDisplay"></div>
+                    </div>
+                </div>
+                
+                <div class="chat-section">
+                    <div id="chatMessages" class="chat-messages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Digite sua mensagem...">
+                        <button id="sendMessage" class="send-btn">📤</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="leaveLobby" class="secondary-btn">Sair da Sala</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen hidden">
+        <div class="game-container">
+            <!-- Game Header -->
+            <div class="game-header">
+                <h2>Coup Online</h2>
+                <div class="game-info">
+                    <span id="currentTurn">Turno de: Aguardando...</span>
+                    <span id="treasury">Tesouro: 50 moedas</span>
+                    <button id="showTutorial" class="help-btn">❓</button>
+                </div>
+            </div>
+            
+            <!-- Main Game Area -->
+            <div class="game-board">
+                <!-- Court Deck and Revealed Cards -->
+                <div class="court-area">
+                    <div class="court-deck">
+                        <div class="deck-card">
+                            <div class="card-back">👑</div>
+                            <div class="deck-count" id="deckCount">15</div>
+                        </div>
+                    </div>
+                    <div class="revealed-cards">
+                        <h4>Cartas Reveladas:</h4>
+                        <div id="revealedCardsArea" class="revealed-cards-area"></div>
+                    </div>
+                </div>
+                
+                <!-- Player's Area -->
+                <div class="player-area">
+                    <div class="player-info">
+                        <h3 id="playerNameDisplay">Seu Nome</h3>
+                        <div class="player-coins">
+                            <span class="coin-icon">🪙</span>
+                            <span id="playerCoins">2</span>
+                        </div>
+                    </div>
+                    <div class="player-cards">
+                        <div id="playerInfluences" class="influence-cards"></div>
+                    </div>
+                </div>
+                
+                <!-- Action Area -->
+                <div id="actionArea" class="action-area">
+                    <!-- Turn Actions -->
+                    <div id="turnActions" class="action-section">
+                        <h3>Suas Ações:</h3>
+                        <div class="action-buttons">
+                            <button id="incomeBtn" class="action-btn income">
+                                <span class="action-icon">💰</span>
+                                <span class="action-name">Renda</span>
+                                <span class="action-desc">+1 moeda</span>
+                            </button>
+                            <button id="foreignAidBtn" class="action-btn foreign-aid">
+                                <span class="action-icon">🤝</span>
+                                <span class="action-name">Ajuda Externa</span>
+                                <span class="action-desc">+2 moedas</span>
+                            </button>
+                            <button id="coupBtn" class="action-btn coup">
+                                <span class="action-icon">⚔️</span>
+                                <span class="action-name">Golpe</span>
+                                <span class="action-desc">7 moedas</span>
+                            </button>
+                        </div>
+                        <div class="character-actions">
+                            <h4>Ações de Personagem:</h4>
+                            <div class="character-buttons">
+                                <button id="taxBtn" class="char-action-btn duke">
+                                    <span class="char-icon">🏛️</span>
+                                    <span class="char-name">Taxar (Duque)</span>
+                                    <span class="char-desc">+3 moedas</span>
+                                </button>
+                                <button id="assassinateBtn" class="char-action-btn assassin">
+                                    <span class="char-icon">🗡️</span>
+                                    <span class="char-name">Assassinar</span>
+                                    <span class="char-desc">3 moedas</span>
+                                </button>
+                                <button id="stealBtn" class="char-action-btn captain">
+                                    <span class="char-icon">🏴‍☠️</span>
+                                    <span class="char-name">Extorquir (Capitão)</span>
+                                    <span class="char-desc">2 moedas</span>
+                                </button>
+                                <button id="exchangeBtn" class="char-action-btn ambassador">
+                                    <span class="char-icon">🎭</span>
+                                    <span class="char-name">Trocar (Embaixador)</span>
+                                    <span class="char-desc">2 cartas</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Challenge/Block Area -->
+                    <div id="reactionArea" class="reaction-area hidden">
+                        <div class="reaction-header">
+                            <h3 id="reactionTitle">Reação Necessária</h3>
+                            <div id="reactionTimer" class="timer">15s</div>
+                        </div>
+                        <div id="reactionContent" class="reaction-content">
+                            <div id="challengeSection" class="challenge-section">
+                                <button id="challengeBtn" class="challenge-btn">🛡️ Contestar</button>
+                                <p class="challenge-desc">Você acredita que o jogador não tem essa carta?</p>
+                            </div>
+                            <div id="blockSection" class="block-section">
+                                <div class="block-options">
+                                    <button id="blockDukeBtn" class="block-btn duke">🏛️ Bloquear (Duque)</button>
+                                    <button id="blockContessBtn" class="block-btn contess">👸 Bloquear (Condessa)</button>
+                                    <button id="blockCaptainBtn" class="block-btn captain">🏴‍☠️ Bloquear (Capitão)</button>
+                                    <button id="blockAmbassadorBtn" class="block-btn ambassador">🎭 Bloquear (Embaixador)</button>
+                                </div>
+                            </div>
+                            <button id="passBtn" class="pass-btn">✅ Permitir</button>
+                        </div>
+                    </div>
+
+                    <!-- Card Selection Area -->
+                    <div id="cardSelectionArea" class="card-selection-area hidden">
+                        <h3 id="cardSelectionTitle">Selecionar Cartas</h3>
+                        <div id="cardSelectionContent" class="card-selection-content">
+                            <div id="availableCards" class="available-cards"></div>
+                            <button id="confirmSelection" class="confirm-btn">Confirmar Seleção</button>
+                        </div>
+                    </div>
+
+                    <!-- Target Selection -->
+                    <div id="targetSelection" class="target-selection hidden">
+                        <h3>Escolher Alvo:</h3>
+                        <div id="targetPlayers" class="target-players"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Opponents Area -->
+            <div class="opponents-area">
+                <h3>Outros Jogadores:</h3>
+                <div id="opponentsList" class="opponents-list"></div>
+            </div>
+            
+            <!-- Game Log -->
+            <div class="game-log-section">
+                <div class="game-log-header">
+                    <h3>Log do Jogo</h3>
+                    <button id="clearLogBtn" class="clear-btn">🗑️</button>
+                </div>
+                <div id="gameLog" class="game-log"></div>
+            </div>
+            
+            <!-- Chat -->
+            <div class="game-chat">
+                <div class="chat-header">
+                    <h3>Chat</h3>
+                    <button id="toggleChatBtn" class="toggle-btn">📝</button>
+                </div>
+                <div id="gameChatMessages" class="chat-messages-game"></div>
+                <div class="chat-input-game">
+                    <input type="text" id="gameChatInput" placeholder="Digite...">
+                    <button id="sendGameMessage" class="send-btn">📤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="screen hidden">
+        <div class="victory-container">
+            <div id="victoryContent" class="victory-content">
+                <h1 id="victoryTitle">👑 Vitória!</h1>
+                <div id="winnerInfo" class="winner-info">
+                    <div class="winner-avatar">🏆</div>
+                    <div class="winner-details">
+                        <h2 id="winnerName">Nome do Vencedor</h2>
+                        <p>Conseguiu eliminar todos os oponentes!</p>
+                    </div>
+                </div>
+                
+                <div class="game-summary">
+                    <h3>Resumo do Jogo:</h3>
+                    <div id="finalStats" class="final-stats">
+                        <div class="stat">
+                            <span class="stat-label">Duração:</span>
+                            <span id="gameDuration" class="stat-value">0 min</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Turnos:</span>
+                            <span id="totalTurns" class="stat-value">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Ações:</span>
+                            <span id="totalActions" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    <div id="playerRanking" class="player-ranking">
+                        <h4>Classificação:</h4>
+                        <ol id="rankingList" class="ranking-list"></ol>
+                    </div>
+                </div>
+                
+                <div class="victory-buttons">
+                    <button id="playAgain" class="primary-btn">🔄 Jogar Novamente</button>
+                    <button id="backToMainMenu" class="secondary-btn">🏠 Menu Principal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Screen -->
+    <div id="tutorialScreen" class="screen hidden">
+        <div class="tutorial-container">
+            <h2>📖 Como Jogar Coup</h2>
+            
+            <div class="tutorial-content">
+                <div class="tutorial-section">
+                    <h3>🎯 Objetivo</h3>
+                    <p>Seja o último jogador com pelo menos uma carta de <strong>Influência</strong> para vencer!</p>
+                    <p>Use <strong>blefe</strong>, <strong>dedução</strong> e <strong>estratégia</strong> para eliminar seus oponentes.</p>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>⚡ Configuração Inicial</h3>
+                    <ul>
+                        <li>Cada jogador começa com <strong>2 cartas de influência</strong> (secretas) e <strong>2 moedas</strong></li>
+                        <li>As cartas ficam face down - outros jogadores não sabem quais você tem</li>
+                        <li>O baralho contém 5 tipos de personagens, com 3-5 cópias de cada (dependendo do número de jogadores)</li>
+                    </ul>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>👥 Personagens e Habilidades</h3>
+                    <div class="characters-grid">
+                        <div class="character-card duke">
+                            <div class="char-icon">🏛️</div>
+                            <div class="char-info">
+                                <h4>Duque</h4>
+                                <p><strong>Ação:</strong> Taxar (+3 moedas)</p>
+                                <p><strong>Bloqueia:</strong> Ajuda Externa</p>
+                            </div>
+                        </div>
+                        <div class="character-card assassin">
+                            <div class="char-icon">🗡️</div>
+                            <div class="char-info">
+                                <h4>Assassino</h4>
+                                <p><strong>Ação:</strong> Assassinar (3 moedas, elimina influência)</p>
+                                <p><strong>Bloqueado por:</strong> Condessa</p>
+                            </div>
+                        </div>
+                        <div class="character-card captain">
+                            <div class="char-icon">🏴‍☠️</div>
+                            <div class="char-info">
+                                <h4>Capitão</h4>
+                                <p><strong>Ação:</strong> Extorquir (2 moedas de outro jogador)</p>
+                                <p><strong>Bloqueia:</strong> Extorsão (de outro Capitão)</p>
+                            </div>
+                        </div>
+                        <div class="character-card ambassador">
+                            <div class="char-icon">🎭</div>
+                            <div class="char-info">
+                                <h4>Embaixador</h4>
+                                <p><strong>Ação:</strong> Trocar (2 cartas do baralho)</p>
+                                <p><strong>Bloqueia:</strong> Extorsão</p>
+                            </div>
+                        </div>
+                        <div class="character-card contess">
+                            <div class="char-icon">👸</div>
+                            <div class="char-info">
+                                <h4>Condessa</h4>
+                                <p><strong>Ação:</strong> Nenhuma ação especial</p>
+                                <p><strong>Bloqueia:</strong> Assassinato</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>🎮 Ações Disponíveis</h3>
+                    <div class="actions-list">
+                        <h4>Ações Gerais (sempre disponíveis):</h4>
+                        <ul>
+                            <li><strong>Renda:</strong> +1 moeda (não pode ser bloqueada ou contestada)</li>
+                            <li><strong>Ajuda Externa:</strong> +2 moedas (pode ser bloqueada pelo Duque)</li>
+                            <li><strong>Golpe:</strong> Paga 7 moedas, elimina uma influência (não pode ser bloqueada)</li>
+                        </ul>
+                        
+                        <h4>Ações de Personagem:</h4>
+                        <ul>
+                            <li>Você pode usar qualquer ação de personagem, mesmo sem ter a carta</li>
+                            <li>Outros jogadores podem <strong>contestar</strong> se acreditarem que você está blefando</li>
+                            <li>Se contestado e você tiver a carta: ganha a contestação</li>
+                            <li>Se contestado e não tiver a carta: perde uma influência</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>⚔️ Contestações e Bloqueios</h3>
+                    <div class="mechanics-explanation">
+                        <div class="mechanic">
+                            <h4>Contestar:</h4>
+                            <p>Quando alguém usa uma ação de personagem, você pode contestar se acha que eles não têm a carta.</p>
+                            <ul>
+                                <li>Se eles tiverem: você perde uma influência</li>
+                                <li>Se não tiverem: eles perdem uma influência</li>
+                            </ul>
+                        </div>
+                        <div class="mechanic">
+                            <h4>Bloquear:</h4>
+                            <p>Alguns personagens podem bloquear certas ações contra eles.</p>
+                            <ul>
+                                <li>Você declara ter o personagem que bloqueia</li>
+                                <li>Outros podem contestar seu bloqueio</li>
+                                <li>Bloqueios bem-sucedidos anulam a ação</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>🎯 Regras Especiais</h3>
+                    <ul>
+                        <li><strong>Golpe Obrigatório:</strong> Com 10+ moedas, você DEVE dar um golpe</li>
+                        <li><strong>Perda de Influência:</strong> Quando perde uma influência, escolha qual carta revelar</li>
+                        <li><strong>Cartas Reveladas:</strong> Vão para a área de cartas reveladas (fora do jogo)</li>
+                        <li><strong>Reembaralhamento:</strong> Após contestações bem-sucedidas, as cartas são reembaralhadas</li>
+                    </ul>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h3>🏆 Condições de Vitória</h3>
+                    <p>O jogo termina quando apenas <strong>um jogador</strong> tem pelo menos uma carta de influência.</p>
+                    <p>Esse jogador é declarado o <strong>vencedor</strong>!</p>
+                </div>
+            </div>
+            
+            <button id="closeTutorial" class="primary-btn">Entendi! Vamos Jogar!</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="coup-script.js"></script>
+</body>
+</html>
