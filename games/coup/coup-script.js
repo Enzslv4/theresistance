@@ -254,7 +254,7 @@ class CoupGame {
             differentArt: document.getElementById('differentArt').checked
         };
 
-        this.socket.emit('createRoom', {
+        this.socket.emit('coup:createRoom', {
             hostName,
             roomName,
             gameSettings
@@ -270,7 +270,7 @@ class CoupGame {
             return;
         }
 
-        this.socket.emit('joinRoom', {
+        this.socket.emit('coup:joinRoom', {
             playerName,
             roomCode
         });
@@ -338,11 +338,11 @@ class CoupGame {
     }
 
     startGame() {
-        this.socket.emit('startGame', { roomCode: this.gameState.roomCode });
+        this.socket.emit('coup:startGame', { roomCode: this.gameState.roomCode });
     }
 
     leaveRoom() {
-        this.socket.emit('leaveRoom');
+        this.socket.emit('coup:leaveRoom');
         this.showScreen('mainMenu');
         this.resetGameState();
     }
@@ -350,14 +350,14 @@ class CoupGame {
     addBot() {
         const difficulty = document.getElementById('botDifficulty').value;
         
-        this.socket.emit('addBot', {
+        this.socket.emit('coup:addBot', {
             roomCode: this.gameState.roomCode,
             difficulty: difficulty
         });
     }
 
     removeBot(botId) {
-        this.socket.emit('removeBot', {
+        this.socket.emit('coup:removeBot', {
             roomCode: this.gameState.roomCode,
             botId: botId
         });
@@ -393,7 +393,7 @@ class CoupGame {
             return;
         }
 
-        this.socket.emit('takeAction', {
+        this.socket.emit('coup:takeAction', {
             roomCode: this.gameState.roomCode,
             action: action,
             target: target
@@ -401,14 +401,14 @@ class CoupGame {
     }
 
     challengeAction() {
-        this.socket.emit('challengeAction', {
+        this.socket.emit('coup:challengeAction', {
             roomCode: this.gameState.roomCode
         });
         this.hideReactionArea();
     }
 
     blockAction(character) {
-        this.socket.emit('blockAction', {
+        this.socket.emit('coup:blockAction', {
             roomCode: this.gameState.roomCode,
             character: character
         });
@@ -416,7 +416,7 @@ class CoupGame {
     }
 
     passReaction() {
-        this.socket.emit('passReaction', {
+        this.socket.emit('coup:passReaction', {
             roomCode: this.gameState.roomCode
         });
         this.hideReactionArea();
@@ -548,7 +548,7 @@ class CoupGame {
         const selectedCards = document.querySelectorAll('.selectable-card.selected');
         const selectedIndices = Array.from(selectedCards).map(card => parseInt(card.dataset.index));
         
-        this.socket.emit('cardSelection', {
+        this.socket.emit('coup:cardSelection', {
             roomCode: this.gameState.roomCode,
             selectedCards: selectedIndices
         });
@@ -614,7 +614,7 @@ class CoupGame {
     }
 
     selectInfluenceToLose(cardIndex) {
-        this.socket.emit('loseInfluence', {
+        this.socket.emit('coup:loseInfluence', {
             roomCode: this.gameState.roomCode,
             cardIndex: cardIndex
         });
@@ -847,7 +847,7 @@ class CoupGame {
         
         if (!message) return;
         
-        this.socket.emit('chatMessage', {
+        this.socket.emit('coup:chatMessage', {
             roomCode: this.gameState.roomCode,
             message: message,
             sender: this.gameState.myPlayerName
@@ -864,7 +864,7 @@ class CoupGame {
         
         if (!message) return;
         
-        this.socket.emit('gameChatMessage', {
+        this.socket.emit('coup:gameChatMessage', {
             roomCode: this.gameState.roomCode,
             message: message,
             sender: this.gameState.myPlayerName

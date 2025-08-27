@@ -14,20 +14,20 @@ class CoupServer {
         this.io.on('connection', (socket) => {
             console.log(`🔌 Coup: User connected: ${socket.id}`);
 
-            socket.on('createRoom', (data) => this.createRoom(socket, data));
-            socket.on('joinRoom', (data) => this.joinRoom(socket, data));
-            socket.on('leaveRoom', () => this.leaveRoom(socket));
-            socket.on('startGame', (data) => this.startGame(socket, data));
-            socket.on('addBot', (data) => this.addBot(socket, data));
-            socket.on('removeBot', (data) => this.removeBot(socket, data));
-            socket.on('chatMessage', (data) => this.handleChatMessage(socket, data));
-            socket.on('gameChatMessage', (data) => this.handleGameChatMessage(socket, data));
-            socket.on('takeAction', (data) => this.handleAction(socket, data));
-            socket.on('challengeAction', (data) => this.handleChallenge(socket, data));
-            socket.on('blockAction', (data) => this.handleBlock(socket, data));
-            socket.on('passReaction', (data) => this.handlePass(socket, data));
-            socket.on('cardSelection', (data) => this.handleCardSelection(socket, data));
-            socket.on('loseInfluence', (data) => this.handleLoseInfluence(socket, data));
+            socket.on('coup:createRoom', (data) => this.createRoom(socket, data));
+            socket.on('coup:joinRoom', (data) => this.joinRoom(socket, data));
+            socket.on('coup:leaveRoom', () => this.leaveRoom(socket));
+            socket.on('coup:startGame', (data) => this.startGame(socket, data));
+            socket.on('coup:addBot', (data) => this.addBot(socket, data));
+            socket.on('coup:removeBot', (data) => this.removeBot(socket, data));
+            socket.on('coup:chatMessage', (data) => this.handleChatMessage(socket, data));
+            socket.on('coup:gameChatMessage', (data) => this.handleGameChatMessage(socket, data));
+            socket.on('coup:takeAction', (data) => this.handleAction(socket, data));
+            socket.on('coup:challengeAction', (data) => this.handleChallenge(socket, data));
+            socket.on('coup:blockAction', (data) => this.handleBlock(socket, data));
+            socket.on('coup:passReaction', (data) => this.handlePass(socket, data));
+            socket.on('coup:cardSelection', (data) => this.handleCardSelection(socket, data));
+            socket.on('coup:loseInfluence', (data) => this.handleLoseInfluence(socket, data));
             
             socket.on('disconnect', () => this.handleDisconnect(socket));
         });
