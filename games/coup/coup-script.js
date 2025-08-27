@@ -102,6 +102,7 @@ class CoupGame {
         // Utility
         document.getElementById('clearLogBtn').addEventListener('click', () => this.clearGameLog());
         document.getElementById('showTutorial').addEventListener('click', () => this.showTutorial());
+        document.getElementById('leaveGame').addEventListener('click', () => this.confirmLeaveGame());
         
         // Game Settings Changes
         document.getElementById('maxPlayers').addEventListener('change', (e) => {
@@ -184,6 +185,7 @@ class CoupGame {
             this.gameState.myPlayerId = data.playerId;
             this.gameState.gameSettings = data.gameSettings;
             
+            this.clearGameChat();
             this.startGameTimer();
             this.updateGameUI();
             this.showScreen('gameScreen');
@@ -663,6 +665,14 @@ class CoupGame {
         // Update current turn indicator
         const currentPlayerName = this.gameState.players.find(p => p.id === this.gameState.currentPlayer)?.name || 'Desconhecido';
         document.getElementById('currentTurn').textContent = `Turno de: ${currentPlayerName}`;
+        
+        // Highlight player area when it's their turn
+        const playerArea = document.querySelector('.player-area');
+        if (this.gameState.currentPlayer === this.gameState.myPlayerId) {
+            playerArea.classList.add('active');
+        } else {
+            playerArea.classList.remove('active');
+        }
     }
 
     updateOpponentsList() {
@@ -945,6 +955,13 @@ class CoupGame {
         input.value = '';
     }
 
+    clearGameChat() {
+        const gameChatMessages = document.getElementById('gameChatMessages');
+        if (gameChatMessages) {
+            gameChatMessages.innerHTML = '';
+        }
+    }
+
     startGameTimer() {
         this.gameStartTime = Date.now();
     }
@@ -983,6 +1000,7 @@ class CoupGame {
         if (this.gameState.isHost) {
             this.socket.emit('startGame', { roomCode: this.gameState.roomCode });
         } else {
+            this.clearGameChat();
             this.showScreen('lobby');
         }
     }
@@ -1012,6 +1030,18 @@ class CoupGame {
             }
         }
         return 'mainMenu'; // Default fallback
+    }
+
+    confirmLeaveGame() {
+        const confirmMessage = "⚠️ Tem certeza que deseja sair do jogo?\n\n" +
+                              "• O jogo será perdido\n" +
+                              "• Você voltará para o menu principal\n" +
+                              "• Outros jogadores continuarão sem você\n\n" +
+                              "Esta ação não pode ser desfeita!";
+        
+        if (confirm(confirmMessage)) {
+            this.leaveRoom();
+        }
     }
 
     resetGameState() {

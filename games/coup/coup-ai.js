@@ -56,21 +56,21 @@ class CoupAI {
                 challengeAccuracy: 0.4,
                 memoryRetention: 0.6,
                 strategyComplexity: 0.3,
-                reactionTime: { min: 800, max: 2500 }
+                reactionTime: { min: 300, max: 1000 }
             },
             medium: {
                 bluffMultiplier: 1.0,
                 challengeAccuracy: 0.65,
                 memoryRetention: 0.8,
                 strategyComplexity: 0.6,
-                reactionTime: { min: 500, max: 2000 }
+                reactionTime: { min: 200, max: 800 }
             },
             hard: {
                 bluffMultiplier: 1.3,
                 challengeAccuracy: 0.85,
                 memoryRetention: 0.95,
                 strategyComplexity: 0.9,
-                reactionTime: { min: 300, max: 1500 }
+                reactionTime: { min: 100, max: 600 }
             },
             turbo: {
                 bluffMultiplier: 1.0,

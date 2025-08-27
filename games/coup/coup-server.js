@@ -462,10 +462,13 @@ class CoupServer {
                 }
             });
 
-            // Set timeout for reactions
+            // Set timeout for reactions - shorter for bot-heavy games
+            const allPlayersAreBots = room.players.every(p => p.isBot || !this.hasInfluences(p));
+            const reactionTimeout = allPlayersAreBots ? 3000 : 15000;
+            
             setTimeout(() => {
                 this.resolveReactions(room);
-            }, 15000);
+            }, reactionTimeout);
 
             this.io.to(data.roomCode).emit('actionTaken', {
                 message: `${player.name} quer usar ${this.getActionName(data.action)}${data.target ? ` em ${this.getPlayerName(room, data.target)}` : ''}`,
@@ -576,10 +579,12 @@ class CoupServer {
                 actionPlayer.influences.push(room.gameState.deck.pop());
             }
 
-            // Execute the action
+            // Execute the action - faster for bot games
+            const allPlayersBots = room.players.every(p => p.isBot || !this.hasInfluences(p));
+            const executionDelay = allPlayersBots ? 200 : 500;
             setTimeout(() => {
                 this.executeAction(room, room.gameState.currentAction);
-            }, 1000);
+            }, executionDelay);
             
         } else {
             // Challenge successful - action player loses influence
@@ -594,9 +599,10 @@ class CoupServer {
             
             // Cancel the action and move to next player
             room.gameState.currentAction = null;
+            const turnDelay = room.players.every(p => p.isBot || !this.hasInfluences(p)) ? 200 : 500;
             setTimeout(() => {
                 this.nextTurn(room);
-            }, 1000);
+            }, turnDelay);
         }
 
         // Clear pending reactions
@@ -642,13 +648,14 @@ class CoupServer {
             type: 'block'
         });
 
-        // Set timeout for block challenge
+        // Set timeout for block challenge - shorter for bot games
+        const blockTimeout = room.players.every(p => p.isBot || !this.hasInfluences(p)) ? 3000 : 15000;
         setTimeout(() => {
             if (room.gameState.currentBlock) {
                 // Block not challenged - block succeeds
                 this.resolveBlock(room, true);
             }
-        }, 15000);
+        }, blockTimeout);
     }
 
     resolveBlock(room, blockSuccessful) {
@@ -780,10 +787,14 @@ class CoupServer {
         }
 
         // Move to next turn (with shorter delays)
+        const allBots = room.players.every(p => p.isBot || !this.hasInfluences(p));
+        const actionDelay = allBots ? 
+            (action.action === 'exchange' ? 500 : 200) : 
+            (action.action === 'exchange' ? 1000 : 500);
         setTimeout(() => {
             room.gameState.currentAction = null;
             this.nextTurn(room);
-        }, action.action === 'exchange' ? 2000 : 500);
+        }, actionDelay);
     }
 
     handleExchange(room, player) {
@@ -799,13 +810,14 @@ class CoupServer {
         // Handle exchange for bots vs humans
         if (player.isBot) {
             // Handle bot exchange automatically
+            const exchangeDelay = room.players.every(p => p.isBot || !this.hasInfluences(p)) ? 300 : 600;
             setTimeout(() => {
                 this.processBotCardSelection(room, player, {
                     type: 'exchange',
                     availableCards: availableCards,
                     required: player.influences.filter(card => card !== 'revealed').length
                 });
-            }, 1000);
+            }, exchangeDelay);
         } else {
             // Send card selection to human player
             const socket = this.io.sockets.sockets.get(player.id);
@@ -886,12 +898,13 @@ class CoupServer {
 
         if (player.isBot) {
             // Handle bot influence loss automatically
+            const botDelay = room.players.every(p => p.isBot || !this.hasInfluences(p)) ? 200 : 300;
             setTimeout(() => {
                 this.processBotCardSelection(room, player, {
                     type: 'loseInfluence',
                     player: player.id
                 });
-            }, 500);
+            }, botDelay);
         } else {
             const socket = this.io.sockets.sockets.get(player.id);
             if (socket) {
@@ -988,6 +1001,17 @@ class CoupServer {
             setTimeout(() => {
                 this.processBotTurn(room, currentPlayer);
             }, delay);
+            
+            // Safety timeout: Force bot to take income after 30 seconds max
+            setTimeout(() => {
+                if (room.gameState.currentPlayer === currentPlayer.id && room.gameState.phase === 'game') {
+                    console.log(`⚠️ Bot ${currentPlayer.name} timeout - forcing income action`);
+                    this.handleAction(null, {
+                        roomCode: room.code,
+                        action: 'income'
+                    }, currentPlayer.id);
+                }
+            }, 30000);
         }
     }
 

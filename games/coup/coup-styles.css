@@ -596,6 +596,23 @@ body {
     border-radius: 15px;
     padding: 1.5rem;
     border: 2px solid #daa520;
+    transition: all 0.3s ease;
+}
+
+.player-area.active {
+    background: rgba(218, 165, 32, 0.1);
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    animation: player-pulse 2s infinite;
+}
+
+@keyframes player-pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    }
 }
 
 .player-info {
