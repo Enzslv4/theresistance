@@ -1,5 +1,9 @@
 class ResistanceGame {
     constructor() {
+        // Inicializar Socket.IO
+        this.socket = io();
+        this.setupSocketListeners();
+        
         this.gameState = {
             screen: 'mainMenu',
             roomCode: null,
@@ -49,6 +53,48 @@ class ResistanceGame {
         };
 
         this.init();
+    }
+    
+    setupSocketListeners() {
+        this.socket.on('roomCreated', (data) => {
+            this.gameState.roomCode = data.roomCode;
+            this.gameState.isHost = data.isHost;
+            this.gameState.playerName = data.playerName;
+            this.gameState.players = data.players;
+            this.enterLobby();
+        });
+        
+        this.socket.on('roomJoined', (data) => {
+            this.gameState.roomCode = data.roomCode;
+            this.gameState.isHost = data.isHost;
+            this.gameState.playerName = data.playerName;
+            this.gameState.players = data.players;
+            this.enterLobby();
+        });
+        
+        this.socket.on('playerJoined', (data) => {
+            this.gameState.players = data.players;
+            this.updateLobbyUI();
+            this.addSystemMessage(`${data.player.name} entrou na sala.`);
+        });
+        
+        this.socket.on('playerLeft', (data) => {
+            this.gameState.players = data.players;
+            this.updateLobbyUI();
+        });
+        
+        this.socket.on('chatMessage', (data) => {
+            this.addChatMessage(data.sender, data.message);
+        });
+        
+        this.socket.on('error', (message) => {
+            alert(message);
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Desconectado do servidor');
+            this.showScreen('mainMenu');
+        });
     }
 
     init() {
@@ -126,15 +172,15 @@ class ResistanceGame {
         const roomCode = this.generateRoomCode();
         
         // Set game mode options
-        this.gameState.gameMode.assassin = document.getElementById('assassinMode').checked;
-        this.gameState.gameMode.specialRoles = document.getElementById('specialRoles').checked;
-        this.gameState.gameMode.ambush = document.getElementById('ambushMode').checked;
-        this.gameState.gameMode.deserter = document.getElementById('deserterMode').checked;
+        const gameMode = {
+            assassin: document.getElementById('assassinMode').checked,
+            specialRoles: document.getElementById('specialRoles').checked,
+            ambush: document.getElementById('ambushMode').checked,
+            deserter: document.getElementById('deserterMode').checked
+        };
 
-        // Initialize game state
-        this.gameState.roomCode = roomCode;
-        this.gameState.isHost = true;
-        this.gameState.playerName = hostName;
+        // Salvar configurações localmente
+        this.gameState.gameMode = gameMode;
         this.gameState.maxPlayers = maxPlayers;
         this.gameState.roomName = roomName;
 
@@ -143,17 +189,17 @@ class ResistanceGame {
             teamSize: size,
             completed: false,
             success: null,
-            failsRequired: (index === 3 && maxPlayers >= 7) ? 2 : 1 // 4th mission with 7+ players needs 2 fails
+            failsRequired: (index === 3 && maxPlayers >= 7) ? 2 : 1
         }));
 
-        // Add host as first player
-        this.gameState.players = [{
-            name: hostName,
-            isHost: true,
-            role: null
-        }];
-
-        this.enterLobby();
+        // Emitir evento para o servidor
+        this.socket.emit('createRoom', {
+            roomCode,
+            roomName,
+            hostName,
+            maxPlayers,
+            gameMode
+        });
     }
 
     joinRoom() {
@@ -170,23 +216,16 @@ class ResistanceGame {
             return;
         }
 
-        // In a real implementation, this would connect to server
-        // For demo purposes, simulate joining
-        this.gameState.roomCode = roomCode;
-        this.gameState.isHost = false;
-        this.gameState.playerName = playerName;
-        this.gameState.players = [
-            { name: 'Host', isHost: true, role: null },
-            { name: playerName, isHost: false, role: null }
-        ];
-
-        this.enterLobby();
+        // Emitir evento para o servidor
+        this.socket.emit('joinRoom', {
+            roomCode,
+            playerName
+        });
     }
 
     enterLobby() {
         this.updateLobbyUI();
         this.showScreen('lobby');
-        this.addSystemMessage(`${this.gameState.playerName} entrou na sala.`);
     }
 
     updateLobbyUI() {
@@ -925,6 +964,11 @@ class ResistanceGame {
         const message = input.value.trim();
         if (message) {
             this.addChatMessage(this.gameState.playerName, message);
+            this.socket.emit('chatMessage', {
+                roomCode: this.gameState.roomCode,
+                message,
+                sender: this.gameState.playerName
+            });
             input.value = '';
         }
     }
@@ -979,6 +1023,7 @@ class ResistanceGame {
     }
 
     leaveLobby() {
+        this.socket.emit('leaveRoom');
         this.showScreen('mainMenu');
         this.gameState = {
             screen: 'mainMenu',
